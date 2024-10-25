@@ -70,15 +70,18 @@
           <p class="stat-label">Всего обучалок: <strong class="stat-value" x-text="totalPosts"></strong></p>
         </div>
 
-
         <div class="stat-item forgotten-questions">
           <p class="stat-label">Последние забытые вопросы:</p>
           <template x-if="forgottenQuestions.length > 0">
             <ul class="forgotten-list">
-              <template x-for="(item, index) in forgottenQuestions" :key="index">
+              <template x-for="(item, index) in forgottenQuestions" :key="item.id">
                 <li class="forgotten-item">
-                  <p class="question" x-text="item.question"></p>
-                  <small class="timestamp" x-text="item.timestamp"></small>
+                  <small class="timestamp" x-text="formatDate(item.timestamp)"></small>
+                  <details>
+                    <summary class="question" x-text="item.question"></summary>
+                    <p class="answer" x-text="item.answer"></p>
+                  </details>
+                  <button class="remove-btn" @click="removeForgottenQuestion(item.id)">&times;</button>
                 </li>
               </template>
             </ul>
@@ -87,6 +90,9 @@
             <p class="text-gray-500">Нет забытых вопросов</p>
           </template>
         </div>
+
+
+
       </div>
     </aside>
 
@@ -281,7 +287,15 @@
               };
             });
         },
-
+        formatDate(timestamp) {
+          return new Date(timestamp).toLocaleString('ru-RU', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        },
         handleKnow() {
           this.nextQuestion();
         },
@@ -290,7 +304,7 @@
           this.isChecking = false;
 
           const questionData = {
-            id: `${this.currentPost._id}-${this.currentQuestionIndex}`,
+            id: `${this.currentPost._id}-${this.currentQuestion.question}`, // Используем вопрос в ID для уникальности
             question: this.currentQuestion.question,
             answer: this.currentQuestion.answer,
             postId: this.currentPost._id,
@@ -300,35 +314,37 @@
           try {
             const stats = await this.statsDb.get('statistics');
 
-            // Проверяем, нет ли уже такого вопроса
+            // Проверяем существование вопроса по его содержимому
             const existingIndex = stats.forgottenQuestions.findIndex(
-              q => q.id === questionData.id
+              q => q.question === questionData.question && q.postId === questionData.postId
             );
 
-            if (existingIndex === -1) {
-              // Добавляем новый вопрос в начало массива
-              stats.forgottenQuestions.unshift(questionData);
-
-              // Ограничиваем количество вопросов
-              if (stats.forgottenQuestions.length > stats.maxForgottenQuestions) {
-                stats.forgottenQuestions = stats.forgottenQuestions.slice(0, stats.maxForgottenQuestions);
-              }
-
-              // Сохраняем обновленную статистику
-              await this.statsDb.put({
-                ...stats,
-                _id: 'statistics',
-                forgottenQuestions: stats.forgottenQuestions
-              });
-
-              // Обновляем локальное состояние
-              this.statistics = stats;
+            if (existingIndex !== -1) {
+              // Если вопрос существует, обновляем его timestamp и перемещаем в начало
+              stats.forgottenQuestions.splice(existingIndex, 1);
             }
+
+            // Добавляем вопрос в начало массива
+            stats.forgottenQuestions.unshift(questionData);
+
+            // Ограничиваем количество вопросов
+            if (stats.forgottenQuestions.length > stats.maxForgottenQuestions) {
+              stats.forgottenQuestions = stats.forgottenQuestions.slice(0, stats.maxForgottenQuestions);
+            }
+
+            // Сохраняем обновленную статистику
+            await this.statsDb.put({
+              ...stats,
+              _id: 'statistics',
+              forgottenQuestions: stats.forgottenQuestions
+            });
+
+            // Обновляем локальное состояние
+            this.statistics = stats;
           } catch (err) {
             console.error('Ошибка при сохранении статистики:', err);
           }
         },
-
         async removeForgottenQuestion(questionId) {
           try {
             const stats = await this.statsDb.get('statistics');
