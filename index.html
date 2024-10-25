@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checker &mdash; заучивание информации</title>
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="custom.css">
+
+
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pouchdb@7.x.x/dist/pouchdb.min.js"></script>
+
+</head>
+
+<body>
+  <div x-data="blogApp" x-init="init()" class="page">
+    <header class="header">
+      <h1>Checker</h1>
+      <p><strong>Заучить информацию здесь. И сейчас.</strong></p>
+    </header>
+
+    <nav class="nav">
+      <p><strong>Темы</strong></p>
+      <hr>
+      <ul>
+        <template x-for="category in parentCategories" :key="category">
+          <li>
+            <a @click.prevent="filterPosts(category)" x-text="category"></a>
+            <template x-if="hasSubCategories(category)">
+              <ul>
+                <template x-for="subCategory in getSubCategories(category)" :key="subCategory">
+                  <li><a @click.prevent="filterPosts(subCategory)" x-text="subCategory"></a></li>
+                </template>
+              </ul>
+            </template>
+          </li>
+        </template>
+      </ul>
+
+      <div>
+        <template x-if="filteredPosts.length > 0">
+          <button @click="clearDatabase()">Удалить все записи</button>
+        </template>
+        <p x-show="filteredPosts.length === 0">Нет доступных постов.</p>
+      </div>
+    </nav>
+
+    <main class="main">
+      <h2>Материалы для заучивания | <a @click="toggleAddBlock()">Добавить новый</a></h2>
+      <div class="posts">
+        <template x-for="post in filteredPosts" :key="post._id">
+          <div class="posts-item">
+            <h3><a @click="viewPost(post)" x-text="post.title"></a></h3>
+            <p><span x-text="post.category"></span> - <span x-text="post.description"></span></p>
+            <hr>
+          </div>
+        </template>
+      </div>
+    </main>
+
+    <aside class="aside">
+      <h3 class="text-lg font-semibold mb-4">Статистика</h3>
+
+      <div class="stats-grid">
+        <div class="stat-item">
+          <p class="stat-label">Всего категорий: <strong class="stat-value" x-text="totalCategories"></strong></p>
+          <p class="stat-label">Всего обучалок: <strong class="stat-value" x-text="totalPosts"></strong></p>
+        </div>
+
+
+        <div class="stat-item forgotten-questions">
+          <p class="stat-label">Последние забытые вопросы:</p>
+          <template x-if="forgottenQuestions.length > 0">
+            <ul class="forgotten-list">
+              <template x-for="(item, index) in forgottenQuestions" :key="index">
+                <li class="forgotten-item">
+                  <p class="question" x-text="item.question"></p>
+                  <small class="timestamp" x-text="item.timestamp"></small>
+                </li>
+              </template>
+            </ul>
+          </template>
+          <template x-if="forgottenQuestions.length === 0">
+            <p class="text-gray-500">Нет забытых вопросов</p>
+          </template>
+        </div>
+      </div>
+    </aside>
+
+
+    <footer class="footer">
+      2024 г.
+    </footer>
+
+    <!-- Post View -->
+    <div x-show="currentPost" x-transition class="post">
+      <template x-if="currentPost">
+        <div>
+          <h2 x-text="currentPost.title"></h2>
+          <p><strong>Категория:</strong> <span x-text="currentPost.category"></span></p>
+          <p><strong>Описание:</strong> <span x-text="currentPost.description"></span></p>
+          <pre><code x-text="currentPost.content"></code></pre>
+          <div class="actions">
+            <button @click="startLearning()">Пройти обучение</button>
+            <button @click="editPost(currentPost)">Изменить</button>
+            <button @click="deletePost(currentPost)">Удалить</button>
+            <button @click="currentPost = null">Закончить</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Learning Mode -->
+    <div x-show="isLearning" x-transition class="learning-mode">
+      <template x-if="currentQuestion">
+        <div>
+          <h3 x-text="currentQuestion.question"></h3>
+
+          <template x-if="showAnswer">
+            <div>
+              <p x-text="currentQuestion.answer"></p>
+              <button @click="nextQuestion()">Продолжить</button>
+            </div>
+          </template>
+
+          <template x-if="isChecking">
+            <div>
+              <textarea x-model="userAnswer" placeholder="Введите ваш ответ"></textarea>
+              <button @click="checkAnswer()">Проверить</button>
+            </div>
+          </template>
+
+          <template x-if="!showAnswer && !isChecking">
+            <div class="actions">
+              <button @click="handleKnow()">Знаю</button>
+              <button @click="handleDontRemember()">Не помню</button>
+              <button @click="handleCheck()">Проверить</button>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <template x-if="!currentQuestion">
+        <div>
+          <h3>Вы прошли обучение!</h3>
+          <div class="actions">
+            <button @click="restartLearning()">Повторить</button>
+            <button @click="finishLearning()">Закончить</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Add Form -->
+    <form x-show="isAdd" @submit.prevent="addPost()" class="new">
+      <legend>Новый материал</legend>
+      <div class="form-body">
+        <input type="text" placeholder="Заголовок" x-model="newPost.title" required>
+        <input type="text" placeholder="Категория" x-model="newPost.category" required>
+        <div>
+          <label><small>Вложить созданную категорию в...</small></label>
+          <select x-model="newPost.parentCategory">
+            <option value="">Не вкладывать</option>
+            <template x-for="category in parentCategories" :key="category">
+              <option x-text="category"></option>
+            </template>
+          </select>
+        </div>
+        <input type="text" placeholder="Описание" x-model="newPost.description" required>
+        <textarea placeholder="Контент" x-model="newPost.content" required></textarea>
+      </div>
+      <div class="actions">
+        <button type="submit">Добавить</button>
+        <button type="button" @click="toggleAddBlock()">Отмена</button>
+      </div>
+    </form>
+
+    <!-- Edit Form -->
+    <div x-show="isEditing" class="edit-form">
+      <template x-if="editingPost">
+        <form @submit.prevent="updatePost()">
+          <h2>Изменение обучалки</h2>
+          <input type="text" placeholder="Заголовок" x-model="editingPost.title" required>
+          <input type="text" placeholder="Категория" x-model="editingPost.category" required>
+          <select x-model="editingPost.parentCategory">
+            <option value="">Без родительской категории</option>
+            <template x-for="category in parentCategories" :key="category">
+              <option x-text="category"></option>
+            </template>
+          </select>
+          <input type="text" placeholder="Описание" x-model="editingPost.description" required>
+          <textarea placeholder="Контент" x-model="editingPost.content" required></textarea>
+          <div class="actions">
+            <button type="submit">Сохранить</button>
+            <button type="button" @click="cancelEdit()">Отмена</button>
+          </div>
+        </form>
+      </template>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('blogApp', () => ({
+        db: new PouchDB('blog_posts'),
+        statsDb: new PouchDB('learning_statistics'),
+        posts: [],
+        filteredPosts: [],
+        parentCategories: [],
+        newPost: {
+          title: '',
+          category: '',
+          parentCategory: '',
+          description: '',
+          content: ''
+        },
+        currentPost: null,
+        isAdd: false,
+        isEditing: false,
+        editingPost: null,
+        currentFilter: null,
+
+        // Свойства для режима обучения
+        isLearning: false,
+        learningContent: [],
+        learningSequence: [],
+        currentQuestionIndex: 0,
+        showAnswer: false,
+        isChecking: false,
+        userAnswer: '',
+        statistics: {
+          forgottenQuestions: [],
+          maxForgottenQuestions: 5
+        },
+
+        // Геттер для текущего вопроса
+        get currentQuestion() {
+          if (!this.isLearning || this.currentQuestionIndex >= this.learningSequence.length) {
+            return null;
+          }
+          return this.learningContent[this.learningSequence[this.currentQuestionIndex]];
+        },
+
+        // Методы для режима обучения
+        startLearning() {
+          this.learningContent = this.parseContent(this.currentPost.content);
+          this.learningSequence = this.generateSequence(this.learningContent.length);
+          this.currentQuestionIndex = 0;
+          this.isLearning = true;
+          this.showAnswer = false;
+          this.isChecking = false;
+        },
+
+        generateSequence(totalQuestions) {
+          const sequence = [];
+          let currentSize = 1;
+
+          while (sequence.length < 20 && currentSize <= totalQuestions) {
+            for (let i = 1; i <= currentSize; i++) {
+              sequence.push(i - 1);
+            }
+            currentSize++;
+          }
+
+          return sequence.slice(0, 20);
+        },
+
+        parseContent(content) {
+          return content
+            .split('---')
+            .map(block => block.trim())
+            .filter(block => block)
+            .map(block => {
+              const [question, ...answerParts] = block.split('\n');
+              return {
+                question: question.trim(),
+                answer: answerParts.join('\n').trim()
+              };
+            });
+        },
+
+        handleKnow() {
+          this.nextQuestion();
+        },
+        async handleDontRemember() {
+          this.showAnswer = true;
+          this.isChecking = false;
+
+          const questionData = {
+            id: `${this.currentPost._id}-${this.currentQuestionIndex}`,
+            question: this.currentQuestion.question,
+            answer: this.currentQuestion.answer,
+            postId: this.currentPost._id,
+            timestamp: new Date().toISOString()
+          };
+
+          try {
+            const stats = await this.statsDb.get('statistics');
+
+            // Проверяем, нет ли уже такого вопроса
+            const existingIndex = stats.forgottenQuestions.findIndex(
+              q => q.id === questionData.id
+            );
+
+            if (existingIndex === -1) {
+              // Добавляем новый вопрос в начало массива
+              stats.forgottenQuestions.unshift(questionData);
+
+              // Ограничиваем количество вопросов
+              if (stats.forgottenQuestions.length > stats.maxForgottenQuestions) {
+                stats.forgottenQuestions = stats.forgottenQuestions.slice(0, stats.maxForgottenQuestions);
+              }
+
+              // Сохраняем обновленную статистику
+              await this.statsDb.put({
+                ...stats,
+                _id: 'statistics',
+                forgottenQuestions: stats.forgottenQuestions
+              });
+
+              // Обновляем локальное состояние
+              this.statistics = stats;
+            }
+          } catch (err) {
+            console.error('Ошибка при сохранении статистики:', err);
+          }
+        },
+
+        async removeForgottenQuestion(questionId) {
+          try {
+            const stats = await this.statsDb.get('statistics');
+            stats.forgottenQuestions = stats.forgottenQuestions.filter(
+              q => q.id !== questionId
+            );
+
+            await this.statsDb.put({
+              ...stats,
+              _id: 'statistics'
+            });
+
+            this.statistics = stats;
+          } catch (err) {
+            console.error('Ошибка при удалении вопроса:', err);
+          }
+        },
+
+        handleCheck() {
+          this.isChecking = true;
+          this.showAnswer = false;
+          this.userAnswer = '';
+        },
+
+        checkAnswer() {
+          const isCorrect = this.userAnswer.trim().toLowerCase() ===
+            this.currentQuestion.answer.trim().toLowerCase();
+          alert(isCorrect ? 'Верно!' : 'Неверно');
+          if (isCorrect) {
+            this.nextQuestion();
+          }
+          this.isChecking = false;
+        },
+
+        nextQuestion() {
+          this.currentQuestionIndex++;
+          this.showAnswer = false;
+          this.isChecking = false;
+          this.userAnswer = '';
+        },
+
+        finishLearning() {
+          this.isLearning = false;
+          this.learningContent = [];
+          this.learningSequence = [];
+          this.currentQuestionIndex = 0;
+        },
+
+        restartLearning() {
+          this.currentQuestionIndex = 0;
+          this.showAnswer = false;
+          this.isChecking = false;
+          this.userAnswer = '';
+        },
+
+        get totalCategories() {
+          return this.parentCategories.length;
+        },
+
+        get totalPosts() {
+          return this.posts.length;
+        },
+
+        get forgottenQuestions() {
+          return this.statistics.forgottenQuestions;
+        },
+        // Существующие методы
+        async init() {
+          // Загружаем посты
+          const result = await this.db.allDocs({ include_docs: true });
+          this.posts = result.rows.map(row => row.doc);
+          this.filteredPosts = [...this.posts];
+          this.updateCategories();
+
+          // Загружаем статистику
+          try {
+            const stats = await this.statsDb.get('statistics');
+            this.statistics = stats;
+          } catch (err) {
+            if (err.name === 'not_found') {
+              // Создаем документ статистики если его нет
+              await this.statsDb.put({
+                _id: 'statistics',
+                forgottenQuestions: [],
+                maxForgottenQuestions: 10
+              });
+            }
+          }
+        },
+
+        updateCategories() {
+          this.parentCategories = Array.from(new Set(this.posts.map(post =>
+            post.parentCategory || post.category
+          ).filter(Boolean)));
+        },
+
+        hasSubCategories(parentCategory) {
+          return this.posts.some(post => post.parentCategory === parentCategory);
+        },
+
+        getSubCategories(parent) {
+          return Array.from(new Set(this.posts
+            .filter(post => post.parentCategory === parent)
+            .map(post => post.category)));
+        },
+
+        filterPosts(category) {
+          this.currentFilter = category;
+          this.filteredPosts = this.posts.filter(post =>
+            post.category === category ||
+            (post.parentCategory === category && !this.hasSubCategories(post.category))
+          );
+        },
+
+        async addPost() {
+          if (!this.newPost.title || !this.newPost.category || !this.newPost.description || !this.newPost.content) {
+            alert('Все поля должны быть заполнены');
+            return;
+          }
+
+          const newPost = {
+            _id: new Date().toISOString(),
+            title: this.newPost.title,
+            category: this.newPost.category,
+            parentCategory: this.newPost.parentCategory || null,
+            description: this.newPost.description,
+            content: this.newPost.content,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          try {
+            await this.db.put(newPost);
+            this.posts.push(newPost);
+            this.filteredPosts = [...this.posts];
+            this.updateCategories();
+            this.resetNewPost();
+            this.isAdd = false;
+          } catch (err) {
+            console.error('Ошибка при добавлении поста:', err);
+            alert('Ошибка при добавлении поста');
+          }
+        },
+
+        viewPost(post) {
+          this.currentPost = { ...post };
+        },
+
+        async deletePost(post) {
+          if (!confirm('Вы уверены, что хотите удалить этот пост?')) {
+            return;
+          }
+
+          try {
+            const latestPost = await this.db.get(post._id);
+            await this.db.remove(latestPost);
+            this.posts = this.posts.filter(p => p._id !== latestPost._id);
+            this.updateCategories();
+            this.filteredPosts = [...this.posts];
+            this.currentPost = null;
+          } catch (err) {
+            console.error('Ошибка при удалении поста:', err);
+            alert('Ошибка при удалении поста');
+          }
+        },
+
+        async editPost(post) {
+          try {
+            const latestPost = await this.db.get(post._id);
+            this.editingPost = { ...latestPost };
+            this.isEditing = true;
+          } catch (err) {
+            console.error('Ошибка при редактировании поста:', err);
+            alert('Ошибка при получении данных поста');
+          }
+        },
+
+        async updatePost() {
+          if (!this.editingPost.title || !this.editingPost.category || !this.editingPost.description || !this.editingPost.content) {
+            alert('Все поля должны быть заполнены');
+            return;
+          }
+
+          try {
+            const latestPost = await this.db.get(this.editingPost._id);
+            const updatedPost = {
+              ...latestPost,
+              title: this.editingPost.title,
+              category: this.editingPost.category,
+              parentCategory: this.editingPost.parentCategory,
+              description: this.editingPost.description,
+              content: this.editingPost.content,
+              updated_at: new Date().toISOString()
+            };
+
+            await this.db.put(updatedPost);
+            const index = this.posts.findIndex(p => p._id === updatedPost._id);
+            if (index !== -1) {
+              this.posts[index] = updatedPost;
+            }
+
+            this.updateCategories();
+            this.filteredPosts = [...this.posts];
+            if (this.currentFilter) {
+              this.filterPosts(this.currentFilter);
+            }
+
+            this.isEditing = false;
+            this.editingPost = null;
+            this.currentPost = updatedPost;
+          } catch (err) {
+            console.error('Ошибка при обновлении поста:', err);
+            alert('Ошибка при обновлении поста');
+          }
+        },
+
+        cancelEdit() {
+          this.isEditing = false;
+          this.editingPost = null;
+        },
+
+        toggleAddBlock() {
+          this.isAdd = !this.isAdd;
+          if (!this.isAdd) {
+            this.resetNewPost();
+          }
+        },
+
+        async clearDatabase() {
+          if (!confirm('Вы уверены, что хотите удалить все записи?')) {
+            return;
+          }
+
+          try {
+            // Удаляем все посты
+            const result = await this.db.allDocs({ include_docs: false });
+            const deletePromises = result.rows.map(row =>
+              this.db.remove(row.id, row.value.rev)
+            );
+            await Promise.all(deletePromises);
+
+            // Очищаем статистику
+            const stats = await this.statsDb.get('statistics');
+            await this.statsDb.put({
+              ...stats,
+              _id: 'statistics',
+              forgottenQuestions: []
+            });
+
+            // Обновляем состояние
+            this.posts = [];
+            this.filteredPosts = [];
+            this.parentCategories = [];
+            this.currentPost = null;
+            this.isEditing = false;
+            this.statistics.forgottenQuestions = [];
+          } catch (err) {
+            console.error('Ошибка при очистке базы данных:', err);
+            alert('Ошибка при удалении записей');
+          }
+        },
+
+        resetNewPost() {
+          this.newPost = {
+            title: '',
+            category: '',
+            parentCategory: '',
+            description: '',
+            content: ''
+          };
+        }
+      }));
+    });
+  </script>
+</body>
+
+</html>
