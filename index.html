@@ -6,7 +6,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Checker &mdash; заучивание информации</title>
 
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/open-props" />
+
+  <!-- optional imports that use the props -->
+  <link rel="stylesheet" href="https://unpkg.com/open-props/normalize.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/open-props/buttons.min.css" />
+
+  <!-- individual imports -->
+  <link rel="stylesheet" href="https://unpkg.com/open-props/indigo.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/open-props/indigo-hsl.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/open-props/easings.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/open-props/animations.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/open-props/sizes.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/open-props/gradients.min.css" />
+  <meta name="color-scheme" content="dark light">
   <link rel="stylesheet" href="custom.css">
 
 
@@ -15,16 +28,35 @@
 
 </head>
 
-<body>
+<body
+  x-data="{ isDarkTheme: localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches) }"
+  :class="{ 'dark': isDarkTheme }">
   <div x-data="blogApp" x-init="init()" class="page">
     <header class="header">
-      <h1>Checker</h1>
-      <p><strong>Заучить информацию здесь. И сейчас.</strong></p>
+      <h1>
+        <a href="/" class="logo">
+          <span>Checker</span>
+          <b>
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+              <path fill="currentColor"
+                d="M14.3 21.7c-.7.2-1.5.3-2.3.3c-5.5 0-10-4.5-10-10S6.5 2 12 2c1.3 0 2.6.3 3.8.7l-1.6 1.6c-.7-.2-1.4-.3-2.2-.3c-4.4 0-8 3.6-8 8s3.6 8 8 8c.4 0 .9 0 1.3-.1c.2.7.6 1.3 1 1.8M7.9 10.1l-1.4 1.4L11 16L21 6l-1.4-1.4l-8.6 8.6zM18 14v3h-3v2h3v3h2v-3h3v-2h-3v-3z" />
+            </svg>
+          </b>
+        </a>
+      </h1>
+
+      <p><strong>Запомнить всё. Шаг за шагом.</strong></p>
     </header>
 
     <nav class="nav">
-      <p><strong>Темы</strong></p>
+
+      <p class="nav-header">
+        <strong>Разделы</strong>
+        <a @click.prevent="showAllPosts()" class="all-posts">Все обучалки</a>
+      </p>
+
       <hr>
+
       <ul>
         <template x-for="category in parentCategories" :key="category">
           <li>
@@ -39,30 +71,44 @@
           </li>
         </template>
       </ul>
-
-      <div>
-        <template x-if="filteredPosts.length > 0">
-          <button @click="clearDatabase()">Удалить все записи</button>
-        </template>
-        <p x-show="filteredPosts.length === 0">Нет доступных постов.</p>
-      </div>
     </nav>
 
     <main class="main">
-      <h2>Материалы для заучивания | <a @click="toggleAddBlock()">Добавить новый</a></h2>
+      <header class="main-header">
+        <h2 class="page-title">Материалы для заучивания</h2>
+        <a @click="toggleAddBlock()" class="add">
+          <b>
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+              <path fill="currentColor"
+                d="M17.5 21h1v-2.5H21v-1h-2.5V15h-1v2.5H15v1h2.5zm.5 2q-2.075 0-3.537-1.463T13 18t1.463-3.537T18 13t3.538 1.463T23 18t-1.463 3.538T18 23M7 9h10V7H7zm4.675 12H5q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h14q.825 0 1.413.588T21 5v6.7q-.725-.35-1.463-.525T18 11q-.275 0-.513.012t-.487.063V11H7v2h6.125q-.45.425-.812.925T11.675 15H7v2h4.075q-.05.25-.062.488T11 18q0 .825.15 1.538T11.675 21" />
+            </svg>
+          </b>
+          <span>Добавить обучалку</span>
+        </a>
+      </header>
+
       <div class="posts">
-        <template x-for="post in filteredPosts" :key="post._id">
+        <template x-for="post in validPosts" :key="post._id">
           <div class="posts-item">
-            <h3><a @click="viewPost(post)" x-text="post.title"></a></h3>
-            <p><span x-text="post.category"></span> - <span x-text="post.description"></span></p>
+            <small class="timestamp" x-text="formatDate(post.created_at)"></small>
+            <p><strong><a @click="viewPost(post)" x-text="post.title"></a></strong> : <span
+                x-text="post.description"></span></p>
             <hr>
           </div>
         </template>
+
+        <footer class="posts-footer">
+          <template x-if="filteredPosts.length > 0">
+            <a @click="clearDatabase()" class="danger">Удалить все записи</a>
+          </template>
+          <p x-show="filteredPosts.length === 0">Нет доступных постов.</p>
+        </footer>
+
       </div>
     </main>
 
     <aside class="aside">
-      <h3 class="text-lg font-semibold mb-4">Статистика</h3>
+      <h4>Статистика</h4>
 
       <div class="stats-grid">
         <div class="stat-item">
@@ -91,29 +137,80 @@
           </template>
         </div>
 
-
-
       </div>
     </aside>
 
-
     <footer class="footer">
-      2024 г.
+      <p>Внимание! Все вносимые данные сейчас сохраняются локально, то есть только в этом браузере. Ваши обучалки не
+        будут доступны в других браузерах и на других устройствах!</p>
+      <hr>
+
+      <p class="flex">
+        <span>2024 г.</span>
+        <button @click="isDarkTheme = !isDarkTheme; localStorage.setItem('theme', isDarkTheme ? 'dark' : 'light')"
+          class="theme-toggle" :title="isDarkTheme ? 'Включить светлую тему' : 'Включить тёмную тему'">
+          <template x-if="isDarkTheme">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+              <path fill="currentColor"
+                d="M12 17q-2.075 0-3.537-1.463T7 12q0-2.075 1.463-3.537T12 7q2.075 0 3.538 1.463T17 12q0 2.075-1.463 3.538T12 17M2 13q-.425 0-.712-.288T1 12q0-.425.288-.712T2 11h2q.425 0 .713.288T5 12q0 .425-.288.713T4 13zm18 0q-.425 0-.712-.288T19 12q0-.425.288-.712T20 11h2q.425 0 .713.288T23 12q0 .425-.288.713T22 13zm-8-8q-.425 0-.712-.288T11 4V2q0-.425.288-.712T12 1q.425 0 .713.288T13 2v2q0 .425-.288.713T12 5m0 18q-.425 0-.712-.288T11 22v-2q0-.425.288-.712T12 19q.425 0 .713.288T13 20v2q0 .425-.288.713T12 23M5.65 7.05L4.575 6q-.3-.275-.288-.7t.288-.725q.3-.3.725-.3t.7.3L7.05 5.65q.275.3.275.7t-.275.7q-.275.3-.687.288T5.65 7.05M18 19.425l-1.05-1.075q-.275-.3-.275-.712t.275-.688q.275-.3.688-.287t.712.287L19.425 18q.3.275.288.7t-.288.725q-.3.3-.725.3t-.7-.3M16.95 7.05q-.3-.275-.288-.687t.288-.713L18 4.575q.275-.3.7-.288t.725.288q.3.3.3.725t-.3.7L18.35 7.05q-.3.275-.7.275t-.7-.275M4.575 19.425q-.3-.3-.3-.725t.3-.7l1.075-1.05q.3-.275.712-.275t.688.275q.3.275.288.688t-.288.712L6 19.425q-.275.3-.7.288t-.725-.288Z" />
+            </svg>
+          </template>
+          <template x-if="!isDarkTheme">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+              <path fill="currentColor"
+                d="M12 21q-3.75 0-6.375-2.625T3 12q0-3.75 2.625-6.375T12 3q.35 0 .688.025t.662.075q-1.025.725-1.638 1.888T11.1 7.5q0 2.25 1.575 3.825T16.5 12.9q1.375 0 2.525-.613T20.9 10.65q.05.325.075.662T21 12q0 3.75-2.625 6.375T12 21" />
+            </svg>
+          </template>
+        </button>
+      </p>
+
     </footer>
 
     <!-- Post View -->
     <div x-show="currentPost" x-transition class="post">
       <template x-if="currentPost">
         <div>
-          <h2 x-text="currentPost.title"></h2>
+          <header class="post-header">
+            <h2 x-text="currentPost.title" class="page-title"></h2>
+            <a @click="currentPost = null" title="Закрыть" class="post-close">
+              <b>
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+                  <path fill="currentColor"
+                    d="m11.292 12l-2.246 2.246q-.14.14-.15.344t.15.364t.354.16t.354-.16L12 12.708l2.246 2.246q.14.14.344.15t.364-.15t.16-.354t-.16-.354L12.708 12l2.246-2.246q.14-.14.15-.344t-.15-.364t-.354-.16t-.354.16L12 11.292L9.754 9.046q-.14-.14-.344-.15t-.364.15t-.16.354t.16.354zm-6.676 7q-.691 0-1.153-.462T3 17.384V6.616q0-.691.463-1.153T4.615 5h14.77q.69 0 1.152.463T21 6.616v10.769q0 .69-.463 1.153T19.385 19z" />
+                </svg>
+              </b>
+              <small>закрыть</small>
+
+            </a>
+          </header>
+
           <p><strong>Категория:</strong> <span x-text="currentPost.category"></span></p>
           <p><strong>Описание:</strong> <span x-text="currentPost.description"></span></p>
-          <pre><code x-text="currentPost.content"></code></pre>
-          <div class="actions">
-            <button @click="startLearning()">Пройти обучение</button>
-            <button @click="editPost(currentPost)">Изменить</button>
-            <button @click="deletePost(currentPost)">Удалить</button>
-            <button @click="currentPost = null">Закончить</button>
+          <pre class="post-content"><code x-text="currentPost.content"></code></pre>
+          <div class="post-actions">
+            <div class="post-col">
+              <button @click="startLearning()" class="button-primary">Пройти обучение</button>
+            </div>
+            <div class="post-col">
+              <button @click="editPost(currentPost)">
+                <b>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+                    <path fill="currentColor"
+                      d="M5 21V3h9.5L19 7.5v2.58l-7.73 7.707V21zm8.654 0v-2.21l5.96-5.934l2.19 2.204l-5.94 5.94zm5.96-4.985l.925-.956l-.925-.943l-.95.95zM14 8h4l-4-4l4 4l-4-4z" />
+                  </svg>
+                </b>
+                <span>Изменить</span>
+              </button>
+              <button @click="deletePost(currentPost)" class="button-danger">
+                <b>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+                    <path fill="currentColor"
+                      d="M15.039 8H18l-4-4v2.962q0 .44.299.739t.74.299M18 18.79l-1.766 1.74q-.14.141-.331.135q-.191-.007-.337-.153q-.141-.14-.141-.345q0-.203.14-.344l1.747-1.746l-1.766-1.765q-.14-.14-.13-.345q.009-.203.15-.344t.343-.14q.204 0 .345.14L18 17.389l1.766-1.766q.14-.14.34-.133t.348.152q.14.14.14.335t-.14.335l-1.74 1.765l1.74 1.765q.14.14.133.342q-.006.2-.153.347q-.14.14-.334.14t-.334-.14zM6.616 21q-.691 0-1.153-.462T5 19.385V4.615q0-.69.463-1.152T6.616 3h7.213q.323 0 .628.13t.522.349L18.52 7.02q.217.218.348.522t.131.628v3.552q0 .243-.18.389t-.422.129q-1.283-.095-2.464.32q-1.18.416-2.107 1.343q-.8.8-1.256 1.859t-.456 2.289q0 .475.089.998q.088.523.265 1q.129.348-.052.649T11.89 21z" />
+                  </svg>
+                </b>
+                <span>Удалить</span>
+              </button>
+            </div>
           </div>
         </div>
       </template>
@@ -162,12 +259,12 @@
 
     <!-- Add Form -->
     <form x-show="isAdd" @submit.prevent="addPost()" class="new">
-      <legend>Новый материал</legend>
+      <legend class="new-title">📃 Новая обучалка</legend>
       <div class="form-body">
         <input type="text" placeholder="Заголовок" x-model="newPost.title" required>
         <input type="text" placeholder="Категория" x-model="newPost.category" required>
         <div>
-          <label><small>Вложить созданную категорию в...</small></label>
+          <label><small>Вы можете вложить созданную категорию в...</small></label>
           <select x-model="newPost.parentCategory">
             <option value="">Не вкладывать</option>
             <template x-for="category in parentCategories" :key="category">
@@ -188,7 +285,7 @@
     <div x-show="isEditing" class="edit-form">
       <template x-if="editingPost">
         <form @submit.prevent="updatePost()">
-          <h2>Изменение обучалки</h2>
+          <h2 class="page-title">Изменение обучалки</h2>
           <input type="text" placeholder="Заголовок" x-model="editingPost.title" required>
           <input type="text" placeholder="Категория" x-model="editingPost.category" required>
           <select x-model="editingPost.parentCategory">
@@ -241,7 +338,17 @@
           forgottenQuestions: [],
           maxForgottenQuestions: 5
         },
-
+        // Геттер для валидных постов
+        get validPosts() {
+          return this.filteredPosts.filter(post =>
+            post &&
+            post.title &&
+            post.category &&
+            post.description &&
+            post._id !== 'first_run' &&
+            !post._id.startsWith('_')
+          );
+        },
         // Геттер для текущего вопроса
         get currentQuestion() {
           if (!this.isLearning || this.currentQuestionIndex >= this.learningSequence.length) {
@@ -411,29 +518,107 @@
         get forgottenQuestions() {
           return this.statistics.forgottenQuestions;
         },
-        // Существующие методы
+        toggleTheme() {
+          this.isDarkTheme = !this.isDarkTheme;
+          localStorage.setItem('theme', this.isDarkTheme ? 'dark' : 'light');
+        },
         async init() {
-          // Загружаем посты
-          const result = await this.db.allDocs({ include_docs: true });
-          this.posts = result.rows.map(row => row.doc);
-          this.filteredPosts = [...this.posts];
-          this.updateCategories();
 
-          // Загружаем статистику
-          try {
-            const stats = await this.statsDb.get('statistics');
-            this.statistics = stats;
-          } catch (err) {
-            if (err.name === 'not_found') {
-              // Создаем документ статистики если его нет
-              await this.statsDb.put({
-                _id: 'statistics',
-                forgottenQuestions: [],
-                maxForgottenQuestions: 10
-              });
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (!localStorage.getItem('theme')) {
+              document.body.classList.toggle('dark', e.matches);
             }
+          });
+
+          try {
+            // Загружаем посты
+            const result = await this.db.allDocs({ include_docs: true });
+            this.posts = result.rows
+              .map(row => row.doc)
+              .filter(doc => doc && doc._id !== 'first_run' && !doc._id.startsWith('_'));
+
+            this.filteredPosts = [...this.posts];
+            this.updateCategories();
+
+            // Проверка на первый вход
+            try {
+              await this.db.get('first_run');
+            } catch (err) {
+              if (err.name === 'not_found') {
+                // Если это первый запуск, создаем категорию и пост
+                const initialPost = {
+                  _id: new Date().toISOString(),
+                  title: 'Простые вопросы',
+                  category: 'Посмотрите в действии',
+                  description: 'Нажми кнопку [Пройти обучение] чтобы понять как это работает, после этого ты можешь создать свои обучалки, для этого есть кнопка [Добавить обучалку]',
+                  content: `Кто всегда спешит на помощь? 
+Чип и Дейл
+---
+Сколько мушкетёров и Д’Артаньян?
+Три
+---
+Из-за чего люди ходят на работу?
+Ради зарплаты
+---
+Что можно делать с закрытыми глазами?
+Спать
+---
+Что падает зимой, но не разбивается?
+Снег
+---
+Что можно услышать, но нельзя увидеть или потрогать?
+Голос
+---
+Как можно попасть в прошлое, не изобретая машину времени?
+Посмотреть на звёзды — свет от них идёт к нам из далёкого прошлого.
+---
+Почему мы видим молнию раньше, чем слышим гром?
+Свет от молнии распространяется намного быстрее, чем звук грома, который доходит до нас позже.
+---
+Какое время года наступает после весны?
+Лето`,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+
+                try {
+                  await this.db.put(initialPost);
+                  this.posts.push(initialPost);
+                  this.filteredPosts = [...this.posts];
+                  this.updateCategories();
+                } catch (conflictError) {
+                  console.error('Ошибка при добавлении поста:', conflictError);
+                }
+
+                try {
+                  await this.db.put({
+                    _id: 'first_run',
+                    created_at: new Date().toISOString()
+                  });
+                } catch (conflictError) {
+                  console.error('Ошибка при добавлении отметки о первом запуске:', conflictError);
+                }
+              }
+            }
+
+            // Загружаем статистику
+            try {
+              const stats = await this.statsDb.get('statistics');
+              this.statistics = stats;
+            } catch (err) {
+              if (err.name === 'not_found') {
+                await this.statsDb.put({
+                  _id: 'statistics',
+                  forgottenQuestions: [],
+                  maxForgottenQuestions: 10
+                });
+              }
+            }
+          } catch (err) {
+            console.error('Ошибка при инициализации:', err);
           }
         },
+
 
         updateCategories() {
           this.parentCategories = Array.from(new Set(this.posts.map(post =>
@@ -450,8 +635,13 @@
             .filter(post => post.parentCategory === parent)
             .map(post => post.category)));
         },
-
+        showAllPosts() {
+          this.currentPost = null;
+          this.currentFilter = null;
+          this.filteredPosts = [...this.posts];
+        },
         filterPosts(category) {
+          this.currentPost = null; // Скрываем текущий пост при фильтрации
           this.currentFilter = category;
           this.filteredPosts = this.posts.filter(post =>
             post.category === category ||
