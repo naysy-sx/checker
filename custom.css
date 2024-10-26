@@ -557,6 +557,14 @@ textarea {
   border: 1px solid darkcyan;
 }
 
+.learning-mode h3 {
+  margin-bottom: var(--lg);
+}
+
+.learning-mode button {
+  margin-top: var(--lg);
+}
+
 .learning-mode .question {
   font-size: 1.5rem;
   margin-bottom: var(--xl);
