@@ -485,6 +485,7 @@ body {
   background-color: hsl(var(--hs-static), var(--l-highest));
   border: 1px solid var(--blue-1);
   padding: 0 var(--lg);
+  max-width: calc(100vw - 4rem);
 }
 
 .post-header {
