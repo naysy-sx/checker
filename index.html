@@ -256,10 +256,10 @@
     <form x-show="isAdd" @submit.prevent="addPost()" class="new">
       <legend class="new-title">📃 Новая обучалка</legend>
       <div class="form-body">
-        <input type="text" placeholder="Заголовок" x-model="newPost.title" required>
-        <input type="text" placeholder="Категория" x-model="newPost.category" required>
+        <input type="text" placeholder="Название материала" x-model="newPost.title" required>
+        <input type="text" placeholder="Раздел" x-model="newPost.category" required>
         <div>
-          <label><small>Вы можете вложить созданную категорию в...</small></label>
+          <label><small>Вы можете вложить созданный раздел в...</small></label>
           <select x-model="newPost.parentCategory">
             <option value="">Не вкладывать</option>
             <template x-for="category in parentCategories" :key="category">
@@ -267,13 +267,20 @@
             </template>
           </select>
         </div>
-        <input type="text" placeholder="Описание" x-model="newPost.description" required>
-        <textarea placeholder="Контент" x-model="newPost.content" required></textarea>
+        <input type="text" placeholder="Короткое описание" x-model="newPost.description" required>
+        <textarea placeholder="Вопросы и ответы" x-model="newPost.content" required></textarea>
       </div>
       <div class="actions">
         <button type="submit">Добавить</button>
         <button type="button" @click="toggleAddBlock()">Отмена</button>
       </div>
+      <hr>
+      <h3>Внимание!</h3>
+      <details>
+        <summary>Вся информация для заучивания добавляется в поле "Вопросы и ответы" в таком виде как это показано
+          здесь!</summary>
+        <img src="/assets/info.png" alt="Как заполнять обучалки" style="border: 2px solid silver;">
+      </details>
     </form>
 
     <!-- Edit Form -->
