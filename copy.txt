@@ -5,10 +5,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Checker &mdash; заучивание информации</title>
-  <link rel="stylesheet" href="/styles/main.css" />
+  <link rel="stylesheet" href="/styles/open-props.min.css" />
   <meta name="color-scheme" content="dark light">
+  <link rel="stylesheet" href="/styles/normalize.min.css" />
+  <link rel="stylesheet" href="/styles/buttons.min.css" />
+  <link rel="stylesheet" href="/styles/indigo-hsl.min.css" />
+  <link rel="stylesheet" href="/styles/indigo-hsl.min.css" />
+  <link rel="stylesheet" href="/styles/easings.min.css" />
+  <link rel="stylesheet" href="/styles/animations.min.css" />
+  <link rel="stylesheet" href="/styles/sizes.min.css" />
+  <link rel="stylesheet" href="/styles/gradients.min.css" />
 
-  <link rel="stylesheet" href="/styles/main.css" />
   <link rel="stylesheet" href="/styles/custom.css">
 
   <script src="/vendor/cdn.min.js" defer></script>
@@ -59,25 +66,6 @@
           </li>
         </template>
       </ul>
-
-      <hr>
-      <div class="cloud-actions" hidden>
-        <a @click.prevent="uploadToCloud" class="cloud-action">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-            <path fill="currentColor"
-              d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5c0-2.64-2.05-4.78-4.65-4.96M14 13v4h-4v-4H7l5-5l5 5z" />
-          </svg>
-          Отправить в облако
-        </a>
-        <a @click.prevent="downloadFromCloud" class="cloud-action">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-            <path fill="currentColor"
-              d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5c0-2.64-2.05-4.78-4.65-4.96M14 17h-4v-4H7l5 5l5-5h-3z" />
-          </svg>
-          Скачать из облака
-        </a>
-      </div>
-
     </nav>
 
     <main class="main">
@@ -97,23 +85,10 @@
       <div class="posts">
         <template x-for="post in validPosts" :key="post._id">
           <div class="posts-item">
-            <header class="posts-item-header">
-              <h2 class="post-title">
-                <a @click="viewPost(post)" style="cursor: pointer;" x-text="post.title"></a>
-                <sup x-text="getStatusText(post.status || 0)"></sup>
-              </h2>
-              <div class="post-actions">
-                <template x-if="post.status === 5">
-                  <a @click="startLearning(post)" class="posts-item-link">Прочесть</a>
-                </template>
-                <template x-if="post.status !== 5">
-                  <a @click="startLearning(post)" class="posts-item-link">Заучить материал</a>
-                </template>
-              </div>
-
-            </header>
-            <p x-text="post.description"></p>
-
+            <small class="timestamp" x-text="formatDate(post.created_at)"></small>
+            <p><strong><a @click="viewPost(post)" x-text="post.title"></a></strong> : <span
+                x-text="post.description"></span></p>
+            <hr>
           </div>
         </template>
 
@@ -167,7 +142,6 @@
 
       <p class="flex">
         <span>2024 г.</span>
-        <a href="mailto:naxymails@gmail.com">Написать разработчику</a>
         <button @click="isDarkTheme = !isDarkTheme; localStorage.setItem('theme', isDarkTheme ? 'dark' : 'light')"
           class="theme-toggle" :title="isDarkTheme ? 'Включить светлую тему' : 'Включить тёмную тему'">
           <template x-if="isDarkTheme">
@@ -191,8 +165,7 @@
     <div x-show="currentPost" x-transition class="post">
       <template x-if="currentPost">
         <div>
-          <small>Текущий этап: </small><small x-text="currentPost ? getStatusText(currentPost.status) : 'Не выучен'"
-            class="post-status"></small>
+          <small x-text="getStatusText(currentPost.status)" class="post-status"></small>
           <header class="post-header">
 
             <h2 x-text="currentPost.title" class="page-title"></h2>
@@ -241,136 +214,165 @@
     </div>
 
     <!-- Learning Mode -->
-    <template x-if="isLearning && currentPost">
-      <div class="learning-mode">
-        <!-- Прогресс -->
-        <div class="progress-bar">
-          <strong x-text="getStatusText(currentPost.status || 0)"></strong>
-          <div>
-            Вопрос <span x-text="currentQuestionIndex + 1"></span> из <span x-text="totalQuestions"></span>
-          </div>
-          <template x-if="currentPost.status === 2 || currentPost.status === 1">
-            <div>Ошибок: <span x-text="errorCount"></span> из 3</div>
+    <div x-show="isLearning" x-transition class="learning-mode">
+      <!--
+      <template x-if="currentQuestion">
+        <div>
+          <h3 x-text="currentQuestion.question"></h3>
+
+          <template x-if="showAnswer">
+            <div>
+              <p x-text="currentQuestion.answer"></p>
+              <button @click="nextQuestion()">Продолжить</button>
+            </div>
+          </template>
+
+          <template x-if="isChecking">
+            <div>
+              <textarea x-model="userAnswer" placeholder="Введите ваш ответ"></textarea>
+              <button @click="checkAnswer()">Проверить</button>
+            </div>
+          </template>
+
+          <template x-if="!showAnswer && !isChecking">
+            <div class="actions">
+              <button @click="handleKnow()">Знаю</button>
+              <button @click="handleDontRemember()">Не помню</button>
+              <button @click="handleCheck()">Проверить</button>
+            </div>
           </template>
         </div>
+      </template>
 
-        <template x-if="showTransitionButtons">
-          <div class="transition-buttons">
-            <p x-text="'Вы закончили этап: ' + getStatusText(currentPost.status)"></p>
-            <div class="buttons">
-              <template x-if="currentPost.status > 1">
-                <button @click="moveToNextStage"
-                  x-text="'Перейти к этапу: ' + getStatusText(currentPost.status - 1)"></button>
+      <template x-if="!currentQuestion">
+        <div>
+          <h3>Вы прошли обучение!</h3>
+          <div class="actions">
+            <button @click="restartLearning()">Повторить</button>
+            <button @click="finishLearning()">Закончить</button>
+          </div>
+        </div>
+      </template>
+
+      -->
+
+
+      <!-- ================ -->
+      <template x-if="currentPost">
+        <div class="learning-mode">
+
+          <!-- Прогресс обучения -->
+          <div class="progress-bar">
+            <h3 x-text="currentPost.status" style="color: red;"></h3> ///
+            <div>Вопрос <span x-text="currentQuestionIndex + 1"></span> из <span x-text="totalQuestions"></span></div>
+            <div x-show="currentPost.status === 2 || currentPost.status === 1">
+              Ошибок: <span x-text="errorCount"></span> из 3
+            </div>
+          </div>
+
+          <!-- Статус 5: Ознакомление -->
+          <template x-if="currentPost.status === 5">
+            <div>
+              <h3 x-text="currentQuestion.question"></h3>
+              <p x-text="currentQuestion.answer"></p>
+              <div class="buttons">
+                <button @click="previousQuestion" x-show="currentQuestionIndex > 0">Вернуться</button>
+                <button @click="nextQuestion" x-show="currentQuestionIndex < totalQuestions - 1">Дальше</button>
+                <button @click="finishFamiliarization" x-show="currentQuestionIndex === totalQuestions - 1">
+                  Закончить ознакомление
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <!-- Статус 4: Изучение -->
+          <template x-if="currentPost.status === 4">
+            <div>
+              <h3 x-text="currentQuestion.question"></h3>
+              <div x-show="!showAnswer" class="buttons">
+                <button @click="handleKnow">Знаю</button>
+                <button @click="handleDontRemember">Не помню</button>
+              </div>
+              <template x-if="showAnswer">
+                <div>
+                  <p x-text="currentQuestion.answer"></p>
+                  <button @click="handleRemembered">Запомнил</button>
+                </div>
               </template>
-              <button @click="exitLearning">Закончить</button>
-            </div>
-          </div>
-        </template>
-
-        <!-- Ознакомление (статус 5) -->
-        <template x-if="currentPost.status === 5">
-          <div>
-            <p x-text="currentQuestion.question" class="current-question"></p>
-            <p x-text="currentQuestion.answer"></p>
-            <div class="buttons">
-              <button @click="previousQuestion" x-show="currentQuestionIndex > 0">
-                Вернуться
-              </button>
-              <button @click="nextQuestion" x-show="currentQuestionIndex < totalQuestions - 1">
-                Дальше
-              </button>
-              <button @click="finishFamiliarization" x-show="currentQuestionIndex === totalQuestions - 1">
-                Закончить ознакомление
+              <button x-show="currentQuestionIndex === totalQuestions - 1 && !showAnswer" @click="finishLearning">
+                Закончить изучение
               </button>
             </div>
-          </div>
-        </template>
+          </template>
 
-        <!-- Изучение (статус 4) -->
-        <template x-if="currentPost.status === 4">
-          <div>
-            <p x-text="currentQuestion.question" class="current-question"></p>
-            <div x-show="!showAnswer" class="buttons">
-              <button @click="handleKnow">Знаю</button>
-              <button @click="handleDontRemember">Не помню</button>
+          <!-- Статус 3: Закрепление -->
+          <template x-if="currentPost.status === 3">
+            <div>
+              <h3 x-text="currentQuestion.question"></h3>
+              <textarea x-model="userAnswer" placeholder="Введите ваш ответ..." :disabled="showAnswer">
+              </textarea>
+              <template x-if="!showAnswer">
+                <button @click="checkAnswer">Проверить</button>
+              </template>
+              <template x-if="showAnswer">
+                <div>
+                  <p class="error-message">Ваш ответ не совпадает с реальным. Напишите правильный ответ!</p>
+                  <p class="correct-answer" x-text="currentQuestion.answer"></p>
+                  <button @click="validateTypedAnswer">OK</button>
+                </div>
+              </template>
+              <button x-show="currentQuestionIndex === totalQuestions - 1 && !showAnswer" @click="finishConsolidation">
+                Закончить закрепление
+              </button>
             </div>
-            <template x-if="showAnswer">
-              <div>
-                <p x-text="currentQuestion.answer"></p>
-                <button @click="handleRemembered">Запомнил</button>
-              </div>
-            </template>
-            <button x-show="currentQuestionIndex === totalQuestions - 1 && !showAnswer" @click="finishLearning">
-              Закончить изучение
-            </button>
-          </div>
-        </template>
+          </template>
 
-        <!-- Закрепление (статус 3) -->
-        <template x-if="currentPost.status === 3">
-          <div>
-            <p x-text="currentQuestion.question" class="current-question"></p>
-            <textarea x-model="userAnswer" placeholder="Введите ваш ответ..." :disabled="showAnswer && !needsTyping">
-            </textarea>
-            <template x-if="!showAnswer">
-              <button @click="checkAnswer">Проверить</button>
-            </template>
-            <template x-if="showAnswer">
-              <div>
-                <p class="error-message">Ваш ответ не совпадает с реальным. Напишите правильный ответ!</p>
-                <p class="correct-answer" x-text="currentQuestion.answer"></p>
-                <button @click="validateTypedAnswer">OK</button>
-              </div>
-            </template>
-            <button x-show="currentQuestionIndex === totalQuestions - 1 && !showAnswer" @click="finishConsolidation">
-              Закончить закрепление
-            </button>
-          </div>
-        </template>
+          <!-- Статус 2: Проверка -->
+          <template x-if="currentPost.status === 2">
+            <div>
+              <h3 x-text="currentQuestion.question"></h3>
+              <template x-if="currentQuestionMode === 'buttons'">
+                <div class="buttons">
+                  <button @click="handleKnowCheck">Знаю</button>
+                  <button @click="handleDontRememberCheck">Не помню</button>
+                </div>
+              </template>
+              <template x-if="currentQuestionMode === 'input'">
+                <div>
+                  <textarea x-model="userAnswer" placeholder="Введите ваш ответ...">
+                  </textarea>
+                  <button @click="checkAnswerCheck">Проверить ответ</button>
+                </div>
+              </template>
+            </div>
+          </template>
 
-        <!-- Проверка (статус 2) -->
-        <template x-if="currentPost.status === 2">
-          <div>
-            <p x-text="currentQuestion.question" class="current-question"></p>
-            <template x-if="currentQuestionMode === 'buttons'">
-              <div class="buttons">
-                <button @click="handleKnowCheck">Знаю</button>
-                <button @click="handleDontRememberCheck">Не помню</button>
-              </div>
-            </template>
-            <template x-if="currentQuestionMode === 'input'">
-              <div>
-                <textarea x-model="userAnswer" placeholder="Введите ваш ответ...">
-                </textarea>
-                <button @click="checkAnswerCheck">Проверить ответ</button>
-              </div>
-            </template>
-          </div>
-        </template>
+          <!-- Статус 1: Экзамен -->
+          <template x-if="currentPost.status === 1">
+            <div>
+              <h3 x-text="currentQuestion.question"></h3>
+              <template x-if="currentQuestionMode === 'buttons'">
+                <div class="buttons">
+                  <button @click="handleKnowExam">Знаю</button>
+                  <button @click="handleDontRememberExam">Не помню</button>
+                </div>
+              </template>
+              <template x-if="currentQuestionMode === 'input'">
+                <div>
+                  <textarea x-model="userAnswer" placeholder="Введите ваш ответ...">
+                  </textarea>
+                  <button @click="checkAnswerExam">Проверить ответ</button>
+                </div>
+              </template>
+            </div>
+          </template>
 
-        <!-- Экзамен (статус 1) -->
-        <template x-if="currentPost.status === 1">
-          <div>
-            <p x-text="currentQuestion.question" class="current-question"></p>
-            <template x-if="currentQuestionMode === 'buttons'">
-              <div class="buttons">
-                <button @click="handleKnowExam">Знаю</button>
-                <button @click="handleDontRememberExam">Не помню</button>
-              </div>
-            </template>
-            <template x-if="currentQuestionMode === 'input'">
-              <div>
-                <textarea x-model="userAnswer" placeholder="Введите ваш ответ...">
-                </textarea>
-                <button @click="checkAnswerExam">Проверить ответ</button>
-              </div>
-            </template>
-          </div>
-        </template>
+          <button @click="exitLearning" class="exit-button">Выйти</button>
+        </div>
+      </template>
+      <!--  end end end end  -->
 
-        <button @click="exitLearning" class="exit-button">Выйти</button>
-      </div>
-    </template>
+    </div>
 
     <!-- Add Form -->
     <form x-show="isAdd" @submit.prevent="addPost()" class="new">
@@ -428,99 +430,7 @@
   </div>
 
   <script>
-    /*
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-    import { getDatabase, ref, set, get } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
 
-  async uploadToCloud() {
-    const password = prompt('Введите пароль для шифрования данных:');
-    if (!password) return;
-
-    try {
-      // Получаем все данные из IndexedDB
-      const postsResult = await this.db.allDocs({ include_docs: true });
-      const posts = postsResult.rows.map(row => row.doc);
-      
-      const statsResult = await this.statsDb.get('statistics');
-      
-      // Создаем объект с данными
-      const data = {
-        posts,
-        statistics: statsResult,
-        timestamp: new Date().toISOString()
-      };
-
-      // Простое шифрование данных
-      const encryptedData = btoa(JSON.stringify(data));
-      
-      // Сохраняем в Firebase
-      await set(ref(database, `backups/${password}`), {
-        data: encryptedData
-      });
-
-      alert('Данные успешно сохранены в облаке!');
-    } catch (err) {
-      console.error('Ошибка при сохранении в облако:', err);
-      alert('Ошибка при сохранении данных');
-    }
-  },
-
-  async downloadFromCloud() {
-    const password = prompt('Введите пароль для загрузки данных:');
-    if (!password) return;
-
-    try {
-      // Получаем данные из Firebase
-      const snapshot = await get(ref(database, `backups/${password}`));
-      if (!snapshot.exists()) {
-        alert('Данные не найдены');
-        return;
-      }
-
-      const encryptedData = snapshot.val().data;
-      const data = JSON.parse(atob(encryptedData));
-
-      // Подтверждение перезаписи
-      if (!confirm('Это действие перезапишет все текущие данные. Продолжить?')) {
-        return;
-      }
-
-      // Очищаем текущие данные
-      const postsResult = await this.db.allDocs();
-      await Promise.all(
-        postsResult.rows.map(row => this.db.remove(row.id, row.value.rev))
-      );
-
-      // Записываем новые данные
-      await Promise.all(
-        data.posts.map(post => this.db.put(post))
-      );
-
-      // Обновляем статистику
-      const stats = await this.statsDb.get('statistics');
-      await this.statsDb.put({
-        ...data.statistics,
-        _rev: stats._rev
-      });
-
-      // Обновляем состояние приложения
-      this.posts = data.posts;
-      this.filteredPosts = [...this.posts];
-      this.statistics = data.statistics;
-      this.updateCategories();
-
-      alert('Данные успешно загружены из облака!');
-    } catch (err) {
-      console.error('Ошибка при загрузке из облака:', err);
-      alert('Ошибка при загрузке данных');
-    }
-  }
-
-
-
-
-
-    */
     // Алгоритм Ратклиффа-Обершелпа
     function findLongestCommonSubstring(str1, str2) {
       let longest = '';
@@ -595,11 +505,7 @@
         difficultQuestions: [],
         questions: [],
         totalQuestions: 0,
-        needsTyping: false,
-        showTransitionButtons: false,
         getStatusText(status) {
-          if (status == null) return 'Начало'; // Возвращаем текст по умолчанию, если статус отсутствует
-
           const statuses = {
             0: 'Не выучен',
             5: 'Ознакомление с материалом',
@@ -634,26 +540,19 @@
 
         // Методы для режима обучения
         startLearning(post) {
-          this.currentPost = { ...post };
-          this.currentPost.status = this.currentPost.status || 5;
+          this.currentPost = post;
           this.currentQuestionIndex = 0;
           this.showAnswer = false;
           this.errorCount = 0;
           this.userAnswer = '';
-          this.isLearning = true;
-          this.needsTyping = false;
-          this.showTransitionButtons = false;
+          this.isLearning = true;  // Включаем режим обучения
           this.questions = this.parseContent(post.content);
           this.totalQuestions = this.questions.length;
 
-          // Обработка специальных случаев
-          if (this.currentPost.status === 2) {
-            const count = Math.ceil(this.questions.length / 2);
+          // Дополнительная логика для подбора вопросов
+          if (post.status === 2 || post.status === 1) {
+            const count = post.status === 2 ? Math.ceil(this.questions.length / 2) : 3;
             this.questions = this.selectRandomQuestions(count);
-            this.totalQuestions = this.questions.length;
-          } else if (this.currentPost.status === 1) {
-            // Для экзамена предпочитаем сложные вопросы
-            this.questions = this.selectRandomQuestions(3, true);
             this.totalQuestions = this.questions.length;
           }
 
@@ -673,26 +572,9 @@
 
           return sequence.slice(0, 20);
         },
-        selectRandomQuestions(count, preferDifficult = false) {
-          let questions = [...this.questions];
-
-          if (preferDifficult && this.difficultQuestions.length > 0) {
-            // Сначала добавляем сложные вопросы
-            const difficult = this.difficultQuestions.slice(0, count);
-            if (difficult.length < count) {
-              // Добавляем случайные вопросы до нужного количества
-              const remaining = this.questions
-                .filter(q => !difficult.some(d => d.question === q.question))
-                .sort(() => 0.5 - Math.random())
-                .slice(0, count - difficult.length);
-              return [...difficult, ...remaining];
-            }
-            return difficult.slice(0, count);
-          }
-
-          return questions
-            .sort(() => 0.5 - Math.random())
-            .slice(0, count);
+        selectRandomQuestions(count) {
+          const shuffled = [...this.questions].sort(() => 0.5 - Math.random());
+          return shuffled.slice(0, count);
         },
         parseContent(content) {
           return content
@@ -799,6 +681,12 @@
           this.isChecking = false;
         },
 
+        nextQuestion() {
+          this.currentQuestionIndex++;
+          this.showAnswer = false;
+          this.isChecking = false;
+          this.userAnswer = '';
+        },
 
         finishLearning() {
           this.isLearning = false;
@@ -819,14 +707,7 @@
           if (this.currentQuestionIndex < this.totalQuestions - 1) {
             this.currentQuestionIndex++;
             this.showAnswer = false;
-            this.isChecking = false;
             this.userAnswer = '';
-            this.needsTyping = false;
-          } else {
-            // Проверяем, нужно ли показать кнопки перехода
-            if (this.currentPost.status > 1 && this.errorCount < 3) {
-              this.showTransitionButtons = true;
-            }
           }
         },
 
@@ -837,40 +718,21 @@
             this.userAnswer = '';
           }
         },
-        moveToNextStage() {
-          const currentStatus = this.currentPost.status;
-          if (currentStatus > 1) {
-            this.currentPost.status = currentStatus - 1;
-            this.savePost();
-            this.startLearning(this.currentPost);
-            this.showTransitionButtons = false;
-          }
-        },
+
         finishFamiliarization() {
-          if (this.currentQuestionIndex < this.totalQuestions - 1) {
-            return; // Не завершаем, если не все вопросы просмотрены
-          }
           this.currentPost.status = 4;
           this.savePost();
-          this.showTransitionButtons = true;
+          this.exitLearning();
         },
-
         finishLearning() {
-          if (this.currentQuestionIndex < this.totalQuestions - 1) {
-            return; // Не завершаем, если не все вопросы пройдены
-          }
           this.currentPost.status = 3;
           this.savePost();
-          this.showTransitionButtons = true;
+          this.exitLearning();
         },
-
         finishConsolidation() {
-          if (this.currentQuestionIndex < this.totalQuestions - 1) {
-            return; // Не завершаем, если не все вопросы закреплены
-          }
           this.currentPost.status = 2;
           this.savePost();
-          this.showTransitionButtons = true;
+          this.exitLearning();
         },
 
         // Методы для режима изучения (статус 4)
@@ -903,18 +765,16 @@
             this.userAnswer = '';
           } else {
             this.showAnswer = true;
-            this.needsTyping = true;
           }
         },
+
         validateTypedAnswer() {
           if (this.userAnswer.trim() === this.currentQuestion.answer.trim()) {
             this.showAnswer = false;
-            this.needsTyping = false;
             this.nextQuestion();
             this.userAnswer = '';
           } else {
             this.userAnswer = '';
-            this.needsTyping = true;
           }
         },
 
@@ -922,17 +782,7 @@
 
         // Методы для режима проверки (статус 2)
         handleKnowCheck() {
-          if (this.currentQuestionIndex === this.totalQuestions - 1) {
-            if (this.errorCount < 3) {
-              // Показываем сообщение об успешном завершении
-              alert('Вы успешно прошли проверку!');
-              this.currentPost.status = 1;
-              this.savePost();
-              this.showTransitionButtons = true;
-            }
-          } else {
-            this.nextQuestion();
-          }
+          this.nextQuestion();
         },
 
         handleDontRememberCheck() {
@@ -1024,46 +874,19 @@
         finishExam() {
           if (this.errorCount < 3) {
             alert('Поздравляем! Вы успешно сдали экзамен!');
-            this.currentPost.status = 0;
+            this.currentPost.status = 0;  // Сброс статуса после успешного экзамена
             this.savePost();
-            this.showTransitionButtons = true;
-          } else {
-            alert('Вы не сдали экзамен. Попробуйте ещё раз');
-            this.exitLearning();
           }
+          this.exitLearning();
         },
-        savePost() {
-          const db = new PouchDB('blog_posts');
-          db.get(this.currentPost._id)
-            .then(doc => {
-              this.currentPost._rev = doc._rev; // Обновляем ревизию
-              return db.put(this.currentPost);
-            })
-            .then(() => {
-              const index = this.posts.findIndex(p => p._id === this.currentPost._id);
-              if (index !== -1) {
-                this.posts[index] = { ...this.currentPost };
-                this.filteredPosts = [...this.posts];
-              }
-            })
-            .catch(err => {
-              console.error('Ошибка при сохранении:', err);
-              alert('Произошла ошибка при сохранении прогресса');
-            });
-        },
+
         exitLearning() {
-          this.isLearning = false;
           this.currentPost = null;
           this.currentQuestionIndex = 0;
           this.showAnswer = false;
           this.userAnswer = '';
           this.errorCount = 0;
           this.difficultQuestions = [];
-          this.showTransitionButtons = false;
-          this.needsTyping = false;
-
-          // Обновляем список постов
-          this.filteredPosts = [...this.posts];
         },
 
         get totalCategories() {
@@ -1109,7 +932,7 @@
                   _id: new Date().toISOString(),
                   title: 'Простые вопросы',
                   category: 'Посмотрите в действии',
-                  description: 'Данный сервис предназначен для заучивания любой информации. Нажми на ссылку справа `Заучить материал` чтобы увидеть как это работает. Также ты можешь создать свои обучалки, для этого есть кнопка `Добавить обучалку`. После как ты добавишь материал в требуемом формате, сервис поможет тебе выучить его содержимое. Успехов!',
+                  description: 'Нажми кнопку [Пройти обучение] чтобы понять как это работает, после этого ты можешь создать свои обучалки, для этого есть кнопка [Добавить обучалку]',
                   content: `Кто всегда спешит на помощь? 
 Чип и Дейл
 ---
@@ -1240,7 +1063,6 @@
 
         viewPost(post) {
           this.currentPost = { ...post };
-          this.isLearning = false; // Убедимся, что режим обучения выключен
         },
 
         async deletePost(post) {
